@@ -1,0 +1,33 @@
+# fail_timeout=0 means we always retry an upstream even if it failed
+# to return a good HTTP response (in case the Unicorn master nukes a
+# single worker for timing out).
+upstream app {
+    server              unix:/tmp/.sock fail_timeout=0;
+}
+
+server {
+    listen          80 default_server;  #remove this for other configs
+    server_name     "";
+    root            /srv/www/site_name/current/public;
+
+    include         site.d/cache.conf;
+    include         site.d/allow_methods.conf;
+
+    include         site.d/locations/nophp.conf;
+    include         site.d/locations/favicon.conf;
+    include         site.d/locations/favicon_apple.conf;
+    include         site.d/locations/assets.conf;
+    include         site.d/locations/system.conf;
+
+    location / {
+        include     site.d/logs/bots.conf;
+        try_files   /system/maintenance.html $uri @app;
+
+        include     site.d/error_pages.conf;
+    }
+
+    location @app {
+        include     site.d/proxy.conf;
+        proxy_pass  http://app;
+    }
+}
